@@ -13,7 +13,7 @@ Ein umfassendes Laravel-basiertes System zur Überwachung von APIs mit automatis
 - [Export Funktionen](#export-funktionen)
 - [Technische Details](#technische-details)
 
-## 🚀 Funktionsumfang
+## Funktionsumfang
 
 ### ✅ Monitoring Features
 - **Flexibles API-Monitoring**: Unterstützt GET, POST, PUT, DELETE Requests
@@ -46,7 +46,7 @@ Ein umfassendes Laravel-basiertes System zur Überwachung von APIs mit automatis
 - **Ein-Klick Alert-Toggle**: Schnelle Alert-Verwaltung
 - **Mobile-Responsive**: Optimiert für alle Geräte
 
-## 🔧 Installation
+## Installation
 
 ### 1. Repository klonen & Dependencies installieren
 ```bash
@@ -74,7 +74,7 @@ Fügen Sie diese Zeile zu Ihrer Crontab hinzu:
 * * * * * cd /pfad/zu/ihrem/projekt && php artisan schedule:run >> /dev/null 2>&1
 ```
 
-## ⚙️ Konfiguration
+## Konfiguration
 
 ### Umgebungsvariablen (.env)
 
@@ -131,7 +131,7 @@ DB_PASSWORD=your-db-password
 | `API_DOWN_ALERT_INTERVAL` | Alert-Frequenz API-Ausfall (min) | 5 | `10` |
 | `API_ALERT_RECIPIENTS` | E-Mail Empfänger (kommagetrennt) | - | `"a@x.com,b@y.com"` |
 
-## 🎯 Artisan Befehle
+## Artisan Befehle
 
 ### Monitoring ausführen
 ```bash
@@ -176,7 +176,7 @@ php artisan cache:clear
 php artisan config:cache
 ```
 
-## 📖 Bedienungsanleitung
+## Bedienungsanleitung
 
 ### 🆕 Neuen Monitor erstellen
 
@@ -237,7 +237,7 @@ php artisan config:cache
     - Datei wird automatisch heruntergeladen
     - Enthält: Zeitstempel, Status, Antwortzeiten, HTTP-Codes, Fehler
 
-## 🔔 E-Mail Alerts
+## E-Mail Alerts
 
 ### Alert-Typen
 
@@ -282,7 +282,7 @@ API_HTTP_ERROR_ALERT_INTERVAL=5
 API_DOWN_ALERT_INTERVAL=2
 ```
 
-## 📈 Export Funktionen
+## Export Funktionen
 
 ### Excel Export
 - **Formatierung**: Professionelle Tabelle mit Styling
@@ -302,7 +302,7 @@ API_DOWN_ALERT_INTERVAL=2
 3. "📊 Excel Export" klicken
 4. Datei wird automatisch heruntergeladen
 
-## 🔧 Technische Details
+## Technische Details
 
 ### Systemanforderungen
 - **PHP**: ≥ 8.1
