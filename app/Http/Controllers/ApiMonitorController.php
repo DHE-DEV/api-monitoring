@@ -38,6 +38,7 @@ class ApiMonitorController extends Controller
             'payload' => 'nullable|json',
             'interval_minutes' => 'required|integer|min:1|max:1440',
             'is_active' => 'boolean',
+            'email_alerts_enabled' => 'boolean',
         ]);
 
         // JSON Strings zu Arrays konvertieren
@@ -50,6 +51,7 @@ class ApiMonitorController extends Controller
 
         // Checkbox explizit behandeln
         $validated['is_active'] = $request->has('is_active') && $request->get('is_active') == '1';
+        $validated['email_alerts_enabled'] = $request->has('email_alerts_enabled') && $request->get('email_alerts_enabled') == '1';
 
         ApiMonitor::create($validated);
 
@@ -127,6 +129,7 @@ class ApiMonitorController extends Controller
             'payload' => 'nullable|json',
             'interval_minutes' => 'required|integer|min:1|max:1440',
             'is_active' => 'boolean',
+            'email_alerts_enabled' => 'boolean',
         ]);
 
         if ($validated['headers']) {
@@ -138,6 +141,21 @@ class ApiMonitorController extends Controller
 
         // Checkbox explizit behandeln
         $validated['is_active'] = $request->has('is_active') && $request->get('is_active') == '1';
+        $validated['email_alerts_enabled'] = $request->has('email_alerts_enabled') && $request->get('email_alerts_enabled') == '1';
+
+        // Wenn E-Mail-Alerts deaktiviert werden, Zeitstempel setzen
+        if (!$validated['email_alerts_enabled'] && $apiMonitor->email_alerts_enabled) {
+            $validated['email_alerts_disabled_at'] = now();
+            $validated['email_alerts_disabled_by'] = 'Manual';
+            $validated['email_alerts_disabled_reason'] = $request->get('disable_reason', 'Manuell deaktiviert');
+        }
+
+        // Wenn E-Mail-Alerts aktiviert werden, Felder zurücksetzen
+        if ($validated['email_alerts_enabled'] && !$apiMonitor->email_alerts_enabled) {
+            $validated['email_alerts_disabled_at'] = null;
+            $validated['email_alerts_disabled_by'] = null;
+            $validated['email_alerts_disabled_reason'] = null;
+        }
 
         $apiMonitor->update($validated);
 
@@ -155,13 +173,57 @@ class ApiMonitorController extends Controller
 
     public function test(ApiMonitor $apiMonitor)
     {
-        $result = $this->apiMonitorService->executeMonitor($apiMonitor);
+        try {
+            \Log::info("Testing monitor: " . $apiMonitor->name);
+
+            $result = $this->apiMonitorService->executeMonitor($apiMonitor);
+
+            \Log::info("Test result", [
+                'success' => $result->success,
+                'response_time' => $result->response_time_ms,
+                'status_code' => $result->status_code,
+            ]);
+
+            return response()->json([
+                'success' => $result->success,
+                'response_time_ms' => $result->response_time_ms,
+                'status_code' => $result->status_code,
+                'error_message' => $result->error_message,
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error("Test method error: " . $e->getMessage(), [
+                'monitor_id' => $apiMonitor->id,
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'response_time_ms' => 0,
+                'status_code' => null,
+                'error_message' => 'Server error: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function toggleEmailAlerts(Request $request, ApiMonitor $apiMonitor)
+    {
+        $action = $request->get('action'); // 'enable' oder 'disable'
+        $reason = $request->get('reason', '');
+
+        if ($action === 'disable') {
+            $apiMonitor->disableEmailAlerts($reason, 'Manual');
+            $message = 'E-Mail-Benachrichtigungen deaktiviert';
+        } else {
+            $apiMonitor->enableEmailAlerts();
+            $message = 'E-Mail-Benachrichtigungen aktiviert';
+        }
 
         return response()->json([
-            'success' => $result->success,
-            'response_time_ms' => $result->response_time_ms,
-            'status_code' => $result->status_code,
-            'error_message' => $result->error_message,
+            'success' => true,
+            'message' => $message,
+            'email_alerts_enabled' => $apiMonitor->email_alerts_enabled,
+            'email_alerts_status' => $apiMonitor->email_alerts_status
         ]);
     }
 

@@ -124,11 +124,11 @@ return [
     ],
 
     'api_bearer_token' => env('API_BEARER_TOKEN'),
-    'api_slow_response_threshold' => env('API_SLOW_RESPONSE_THRESHOLD', 3000),
+    'api_slow_response_threshold' => (int) env('API_SLOW_RESPONSE_THRESHOLD', 3000),
     'api_alert_recipients' => env('API_ALERT_RECIPIENTS'),
 
     // Rate Limiting für E-Mail Alerts (in Minuten)
-    'api_slow_response_alert_interval' => env('API_SLOW_RESPONSE_ALERT_INTERVAL', 30),
-    'api_http_error_alert_interval' => env('API_HTTP_ERROR_ALERT_INTERVAL', 15),
-    'api_down_alert_interval' => env('API_DOWN_ALERT_INTERVAL', 5),
+    'api_slow_response_alert_interval' => (int) env('API_SLOW_RESPONSE_ALERT_INTERVAL', 30),
+    'api_http_error_alert_interval' => (int) env('API_HTTP_ERROR_ALERT_INTERVAL', 15),
+    'api_down_alert_interval' => (int) env('API_DOWN_ALERT_INTERVAL', 5),
 ];
