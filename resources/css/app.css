@@ -1,11 +1,29 @@
-@import 'tailwindcss';
+/* resources/css/app.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
-@source '../../storage/framework/views/*.php';
-@source '../**/*.blade.php';
-@source '../**/*.js';
+/* Dashboard Layout Korrekturen */
+.dashboard-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+}
 
-@theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+.dashboard-card {
+    @apply bg-white rounded-lg shadow-sm border;
+}
+
+.dashboard-stat-card {
+    @apply bg-white rounded-lg shadow-sm border p-6;
+}
+
+/* Navigation Layout Fixes */
+.nav-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+/* Responsive fixes */
+@media (max-width: 768px) {
+    .dashboard-container {
+        @apply px-2;
+    }
 }
