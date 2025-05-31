@@ -46,15 +46,19 @@ class ApiMonitorController extends Controller
 
     public function index()
     {
-        if (!auth()->user()->hasPermission('view_monitors')) {
-            abort(403, 'Keine Berechtigung');
-        }
+        // Debug: zur Kontrolle, ob dieser Punkt erreicht wird
+        \Log::debug("ApiMonitorController@index aufgerufen", [
+            'user_id' => auth()->id(),
+            'role' => auth()->user()->role,
+            'primary_role' => optional(auth()->user()->primaryRole)->name,
+            'has_permission' => auth()->user()->hasPermission('view_monitors'),
+        ]);
 
-        $this->checkPermission('view_monitors');
+        $monitors = ApiMonitor::with('latestResult')->paginate(15);
 
-        $monitors = ApiMonitor::with('latestResult')->get();
         return view('api-monitor.index', compact('monitors'));
     }
+
 
     public function create()
     {
