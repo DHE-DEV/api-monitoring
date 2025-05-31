@@ -17,8 +17,41 @@ class ApiMonitorController extends Controller
     {
     }
 
+    private function checkPermission($permission)
+    {
+        $user = auth()->user();
+
+        // Debug-Log
+        \Log::info("Permission check", [
+            'user_id' => $user->id,
+            'user_email' => $user->email,
+            'permission' => $permission,
+            'primary_role_id' => $user->primary_role_id,
+            'legacy_role' => $user->role,
+            'has_permission' => $user->hasPermission($permission)
+        ]);
+
+        if (!$user->hasPermission($permission)) {
+            // Fallback für SuperAdmins
+            if ($user->role === 'superadmin' || ($user->primaryRole && $user->primaryRole->name === 'superadmin')) {
+                \Log::info("SuperAdmin fallback granted for permission: {$permission}");
+                return true;
+            }
+
+            abort(403, "Keine Berechtigung für: {$permission}. Bitte kontaktieren Sie den Administrator.");
+        }
+
+        return true;
+    }
+
     public function index()
     {
+        if (!auth()->user()->hasPermission('view_monitors')) {
+            abort(403, 'Keine Berechtigung');
+        }
+
+        $this->checkPermission('view_monitors');
+
         $monitors = ApiMonitor::with('latestResult')->get();
         return view('api-monitor.index', compact('monitors'));
     }

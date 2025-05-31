@@ -20,6 +20,8 @@ class ApiMonitor extends Model
         'payload',
         'interval_minutes',
         'is_active',
+        'visibility',
+        'access_permissions',
         'email_alerts_enabled',
         'email_alerts_disabled_at',
         'email_alerts_disabled_by',
@@ -32,6 +34,7 @@ class ApiMonitor extends Model
         'is_active' => 'boolean',
         'email_alerts_enabled' => 'boolean',
         'email_alerts_disabled_at' => 'datetime',
+        'access_permissions' => 'array',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -44,6 +47,13 @@ class ApiMonitor extends Model
     public function latestResult()
     {
         return $this->hasOne(ApiMonitorResult::class)->latestOfMany();
+    }
+
+    public function groups()
+    {
+        return $this->belongsToMany(Group::class, 'monitor_groups')
+            ->withPivot(['permissions'])
+            ->withTimestamps();
     }
 
     public function disableEmailAlerts(string $reason = '', string $disabledBy = 'Manual')

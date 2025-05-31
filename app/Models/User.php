@@ -1,49 +1,43 @@
 <?php
-
+// app/Models/User.php
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Support\Facades\Hash;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
     /**
      * The attributes that are mass assignable.
-     *
-     * @var list<string>
      */
     protected $fillable = [
         'name',
         'email',
         'password',
-        'email_verified_at',
-        'role',
-        'is_active',
+        'role',                    // HINZUGEFÜGT
+        'primary_role_id',         // Für das neue Rollen-System
         'first_name',
         'last_name',
-        'avatar',
         'department',
         'phone',
+        'avatar',
+        'is_active',
+        'email_verified_at',
         'email_notifications',
         'notification_types',
         'monitor_access',
-        'last_login_at',
-        'last_login_ip',
         'password_changed_at',
+        'last_login_at',
         'created_by',
         'updated_by',
     ];
 
     /**
      * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
      */
     protected $hidden = [
         'password',
@@ -52,21 +46,37 @@ class User extends Authenticatable
 
     /**
      * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
      */
     protected function casts(): array
     {
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'password_changed_at' => 'datetime',
+            'last_login_at' => 'datetime',
             'is_active' => 'boolean',
             'email_notifications' => 'boolean',
             'notification_types' => 'array',
             'monitor_access' => 'array',
-            'last_login_at' => 'datetime',
-            'password_changed_at' => 'datetime',
         ];
+    }
+
+    // Beziehungen
+    public function primaryRole()
+    {
+        return $this->belongsTo(Role::class, 'primary_role_id');
+    }
+
+    public function permissions()
+    {
+        return $this->hasManyThrough(
+            Permission::class,
+            Role::class,
+            'id',              // Foreign key on roles table
+            'id',              // Foreign key on permissions table
+            'primary_role_id', // Local key on users table
+            'id'               // Local key on roles table
+        )->using('role_permissions'); // Pivot table
     }
 
     public function createdBy()
@@ -81,55 +91,63 @@ class User extends Authenticatable
 
     public function apiMonitors()
     {
-        return $this->hasMany(ApiMonitor::class, 'created_by');
+        return $this->belongsToMany(ApiMonitor::class, 'user_monitor_access');
     }
 
-    // Role Checks
-    public function isAdmin()
+    public function groups()
     {
-        return $this->role === 'admin';
+        return $this->belongsToMany(Group::class, 'group_members');
     }
 
-    public function isManager()
+    // Helper Methods
+    public function hasPermission($permission)
     {
-        return $this->role === 'manager';
-    }
+        // SuperAdmin Fallback - immer zuerst prüfen
+        if ($this->role === 'superadmin' || ($this->primaryRole && $this->primaryRole->name === 'superadmin')) {
+            return true;
+        }
 
-    public function isUser()
-    {
-        return $this->role === 'user';
-    }
+        // Prüfung über Rolle mit Permissions-Tabelle
+        if ($this->primaryRole && $this->primaryRole->permissions) {
+            return $this->primaryRole->permissions()
+                ->where('name', $permission)
+                ->exists();
+        }
 
-    public function hasRole($role)
-    {
-        return $this->role === $role;
+        // Fallback für alte Rollen-Struktur
+        return match($this->role) {
+            'admin' => true, // Admin hat alle Rechte
+            'manager' => in_array($permission, [
+                'view_monitors', 'create_monitors', 'edit_monitors', 'test_monitors',
+                'view_users', 'view_groups', 'view_dashboard'
+            ]),
+            'user' => in_array($permission, ['view_monitors', 'test_monitors', 'view_dashboard']),
+            default => false
+        };
     }
 
     public function canManageUsers()
     {
-        return in_array($this->role, ['admin', 'manager']);
+        return $this->hasPermission('manage_users') ||
+            in_array($this->role, ['admin', 'superadmin']);
     }
 
-    public function canAccessMonitor($monitorId)
+    public function isSuperAdmin()
     {
-        // Admin kann alles
-        if ($this->isAdmin()) {
-            return true;
-        }
-
-        // Wenn monitor_access null ist, kann User alle Monitore sehen
-        if (is_null($this->monitor_access)) {
-            return true;
-        }
-
-        // Prüfen ob Monitor ID in der Zugriffsliste ist
-        return in_array($monitorId, $this->monitor_access ?? []);
+        return $this->role === 'superadmin' ||
+            ($this->primaryRole && $this->primaryRole->name === 'superadmin');
     }
 
-    public function getFullNameAttribute()
+    public function isAdmin()
+    {
+        return in_array($this->role, ['admin', 'superadmin']) ||
+            ($this->primaryRole && in_array($this->primaryRole->name, ['admin', 'superadmin']));
+    }
+
+    public function getDisplayNameAttribute()
     {
         if ($this->first_name && $this->last_name) {
-            return $this->first_name . ' ' . $this->last_name;
+            return "{$this->first_name} {$this->last_name}";
         }
         return $this->name;
     }
@@ -142,43 +160,22 @@ class User extends Authenticatable
 
         // Fallback zu Gravatar
         $hash = md5(strtolower(trim($this->email)));
-        return "https://www.gravatar.com/avatar/{$hash}?d=identicon&s=150";
+        return "https://www.gravatar.com/avatar/{$hash}?d=mp&s=200";
     }
 
-    public function getRoleDisplayAttribute()
+    public function getRoleDisplayNameAttribute()
     {
+        if ($this->primaryRole) {
+            return $this->primaryRole->display_name;
+        }
+
         return match($this->role) {
+            'superadmin' => 'Super Administrator',
             'admin' => 'Administrator',
             'manager' => 'Manager',
             'user' => 'Benutzer',
             default => 'Unbekannt'
         };
-    }
-
-    public function getStatusDisplayAttribute()
-    {
-        return $this->is_active ? 'Aktiv' : 'Deaktiviert';
-    }
-
-    public function updateLastLogin()
-    {
-        $this->update([
-            'last_login_at' => now(),
-            'last_login_ip' => request()->ip(),
-        ]);
-    }
-
-    public function shouldReceiveNotification($type)
-    {
-        if (!$this->email_notifications || !$this->is_active) {
-            return false;
-        }
-
-        if (is_null($this->notification_types)) {
-            return true; // Alle Benachrichtigungen wenn nicht gesetzt
-        }
-
-        return in_array($type, $this->notification_types);
     }
 
     // Scopes
@@ -187,18 +184,72 @@ class User extends Authenticatable
         return $query->where('is_active', true);
     }
 
-    public function scopeByRole($query, $role)
+    public function scopeInactive($query)
+    {
+        return $query->where('is_active', false);
+    }
+
+    public function scopeWithRole($query, $role)
     {
         return $query->where('role', $role);
     }
 
-    public function scopeAdmins($query)
+    public function scopeVerified($query)
     {
-        return $query->where('role', 'admin');
+        return $query->whereNotNull('email_verified_at');
     }
 
-    public function scopeManagers($query)
+    public function scopeUnverified($query)
     {
-        return $query->whereIn('role', ['admin', 'manager']);
+        return $query->whereNull('email_verified_at');
+    }
+
+    // Mutators
+    public function setPasswordAttribute($value)
+    {
+        if (!empty($value)) {
+            $this->attributes['password'] = Hash::make($value);
+        }
+    }
+
+    // Login Tracking
+    public function updateLastLogin()
+    {
+        $this->update([
+            'last_login_at' => now()
+        ]);
+    }
+
+    public function markAsLoggedIn()
+    {
+        return $this->updateLastLogin();
+    }
+
+    // Boot method für automatische Werte
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($user) {
+            // Standard-Werte setzen
+            if (!isset($user->is_active)) {
+                $user->is_active = true;
+            }
+
+            if (!isset($user->email_notifications)) {
+                $user->email_notifications = true;
+            }
+
+            if (!isset($user->notification_types)) {
+                $user->notification_types = ['api_down', 'slow_response', 'http_error'];
+            }
+        });
+
+        static::updating(function ($user) {
+            // Password changed tracking
+            if ($user->isDirty('password')) {
+                $user->password_changed_at = now();
+            }
+        });
     }
 }
