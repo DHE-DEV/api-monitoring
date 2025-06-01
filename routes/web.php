@@ -37,6 +37,14 @@ Route::middleware('auth')->group(function () {
         ->name('dashboard.data')
         ->middleware('permission:view-dashboard');
 
+    Route::get('/dashboard/system', [DashboardController::class, 'systemStats'])
+        ->name('dashboard.system')
+        ->middleware('permission:manage-settings');
+
+    Route::get('/dashboard/quick-actions', [DashboardController::class, 'quickActions'])
+        ->name('dashboard.quick-actions')
+        ->middleware('permission:view-dashboard');
+
     // User Management (später zu implementieren)
     Route::middleware('permission:view-users')->group(function () {
         Route::get('/users', function () {
