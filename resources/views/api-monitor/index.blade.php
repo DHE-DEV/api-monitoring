@@ -12,7 +12,8 @@
                         <p class="text-gray-600">Verwalten Sie Ihre API-Überwachungen</p>
                     </div>
 
-                    @can('create-monitors')
+
+
                         <div class="flex space-x-3">
                             <!-- Column Settings Button -->
                             <button onclick="openColumnSettings()"
@@ -32,7 +33,7 @@
                                 Neuer Monitor
                             </a>
                         </div>
-                    @endcan
+
                 </div>
             </div>
 

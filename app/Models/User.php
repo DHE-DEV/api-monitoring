@@ -1,24 +1,22 @@
 <?php
+// app/Models/User.php
 
 namespace App\Models;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable;
-
-    // 👉 automatische Laden von primaryRole
-    protected $with = ['primaryRole'];
+    use HasApiTokens, HasFactory, Notifiable, HasRoles;
 
     protected $fillable = [
         'name',
         'email',
         'password',
-        'role',
-        'primary_role_id',
         'first_name',
         'last_name',
         'department',
@@ -54,37 +52,36 @@ class User extends Authenticatable
         ];
     }
 
-    public function primaryRole()
+    /**
+     * Check if user is Super Admin
+     * Verwendet Spatie's hasRole() Methode
+     */
+    public function isSuperAdmin(): bool
     {
-        return $this->belongsTo(Role::class, 'primary_role_id');
+        return $this->hasRole('Super Admin') || $this->hasRole('superadmin');
     }
 
-    public function hasPermission($permission)
+    /**
+     * Get user's full name
+     */
+    public function getFullNameAttribute(): string
     {
-        // 1. SuperAdmin darf alles
-        if ($this->role === 'superadmin' || optional($this->primaryRole)->name === 'superadmin') {
-            return true;
-        }
-
-        // 2. Permission über primaryRole prüfen
-        if ($this->primaryRole) {
-            return $this->primaryRole->permissions()->where('name', $permission)->exists();
-        }
-
-        // 3. Fallback für alte Rollenstruktur
-        return match($this->role) {
-            'admin' => true,
-            'manager' => in_array($permission, [
-                'view_monitors', 'create_monitors', 'edit_monitors', 'test_monitors',
-                'view_users', 'view_groups', 'view_dashboard'
-            ]),
-            'user' => in_array($permission, ['view_monitors', 'test_monitors', 'view_dashboard']),
-            default => false
-        };
+        return trim($this->first_name . ' ' . $this->last_name) ?: $this->name;
     }
 
-    public function isSuperAdmin()
+    /**
+     * Scope for active users
+     */
+    public function scopeActive($query)
     {
-        return $this->role === 'superadmin' || optional($this->primaryRole)->name === 'superadmin';
+        return $query->where('is_active', true);
+    }
+
+    /**
+     * Get all permissions for this user (direct + via roles)
+     */
+    public function getAllPermissions()
+    {
+        return $this->getPermissionsViaRoles()->merge($this->getDirectPermissions())->unique('name');
     }
 }

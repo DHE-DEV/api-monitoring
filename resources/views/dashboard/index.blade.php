@@ -110,7 +110,7 @@
                         </a>
 
                         <!-- Neuer Monitor -->
-                        @can('create-monitors')
+                        @can('create_monitors')
                             <a href="{{ route('api-monitor.create') }}"
                                class="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition duration-200">
                                 <div class="p-2 bg-green-100 rounded-lg mr-4">
