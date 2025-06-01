@@ -1,67 +1,10 @@
-// resources/js/app.js - Vollständige Version mit Dashboard-Erweiterungen
+// resources/js/app.js - Korrigierte Version
 
 import './bootstrap';
 import Alpine from 'alpinejs';
 
-// Bestehende Alpine.js Komponenten (erweitert)
-Alpine.data('userManagement', () => ({
-    // User Management Logik
-    users: [],
-    loading: false,
-    selectedUser: null,
-    showCreateForm: false,
-
-    async loadUsers() {
-        this.loading = true;
-        try {
-            const response = await fetch('/api/users', {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('api_token')}`,
-                    'Accept': 'application/json'
-                }
-            });
-            const data = await response.json();
-            this.users = data.users || data;
-        } catch (error) {
-            console.error('Error loading users:', error);
-            this.$dispatch('show-notification', {
-                type: 'error',
-                message: 'Fehler beim Laden der Benutzer'
-            });
-        } finally {
-            this.loading = false;
-        }
-    },
-
-    async createUser(userData) {
-        try {
-            const response = await fetch('/api/users', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('api_token')}`,
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                },
-                body: JSON.stringify(userData)
-            });
-
-            if (response.ok) {
-                await this.loadUsers(); // Refresh list
-                this.showCreateForm = false;
-                this.$dispatch('show-notification', {
-                    type: 'success',
-                    message: 'Benutzer erfolgreich erstellt'
-                });
-            }
-        } catch (error) {
-            this.$dispatch('show-notification', {
-                type: 'error',
-                message: 'Fehler beim Erstellen des Benutzers'
-            });
-        }
-    }
-}));
+// HINWEIS: Die 'userManagement'-Komponente wurde entfernt, um den Konflikt
+// mit der Inline-Definition in 'users/index.blade.php' zu beheben.
 
 Alpine.data('apiMonitor', () => ({
     // API Monitor Dashboard Logik (erweitert)
