@@ -1,9 +1,10 @@
 <?php
-// routes/web.php - Erweitert mit Authentication
+// routes/web.php - Vollständige Version mit User Management
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\ApiMonitorController;
 
 /*
@@ -12,12 +13,12 @@ use App\Http\Controllers\ApiMonitorController;
 |--------------------------------------------------------------------------
 */
 
-// Redirect Root zur API Monitor Hauptseite oder Login
+// Redirect Root zur Dashboard oder Login
 Route::get('/', function () {
     if (auth()->check()) {
         return redirect()->route('dashboard');
     }
-    return redirect()->route('api-monitor.index');
+    return redirect()->route('login');
 });
 
 // Authentication Routes
@@ -45,14 +46,49 @@ Route::middleware('auth')->group(function () {
         ->name('dashboard.quick-actions')
         ->middleware('permission:view-dashboard');
 
-    // User Management (später zu implementieren)
+    // User Management Routes
     Route::middleware('permission:view-users')->group(function () {
-        Route::get('/users', function () {
-            return view('users.index');
-        })->name('users.index');
+        Route::get('/users', [UserManagementController::class, 'index'])
+            ->name('users.index');
+
+        Route::get('/users/data', [UserManagementController::class, 'getUserData'])
+            ->name('users.data');
+
+        Route::get('/users/{user}', [UserManagementController::class, 'show'])
+            ->name('users.show');
     });
 
-    // Settings (später zu implementieren)
+    Route::middleware('permission:create-users')->group(function () {
+        Route::get('/users/create', [UserManagementController::class, 'create'])
+            ->name('users.create');
+
+        Route::post('/users', [UserManagementController::class, 'store'])
+            ->name('users.store');
+    });
+
+    Route::middleware('permission:edit-users')->group(function () {
+        Route::get('/users/{user}/edit', [UserManagementController::class, 'edit'])
+            ->name('users.edit');
+
+        Route::put('/users/{user}', [UserManagementController::class, 'update'])
+            ->name('users.update');
+
+        Route::post('/users/{user}/toggle-status', [UserManagementController::class, 'toggleStatus'])
+            ->name('users.toggle-status');
+
+        Route::post('/users/{user}/reset-password', [UserManagementController::class, 'resetPassword'])
+            ->name('users.reset-password');
+
+        Route::post('/users/bulk-action', [UserManagementController::class, 'bulkAction'])
+            ->name('users.bulk-action');
+    });
+
+    Route::middleware('permission:delete-users')->group(function () {
+        Route::delete('/users/{user}', [UserManagementController::class, 'destroy'])
+            ->name('users.destroy');
+    });
+
+    // Settings (für zukünftige Implementierung)
     Route::middleware('permission:view-settings')->group(function () {
         Route::get('/settings', function () {
             return view('settings.index');
@@ -60,7 +96,7 @@ Route::middleware('auth')->group(function () {
     });
 });
 
-// Bestehende API Monitor Routes (angepasst mit Berechtigungen)
+// API Monitor Routes (bestehende, erweitert mit Berechtigungen)
 Route::middleware('auth')->group(function () {
     Route::get('api-monitor', [ApiMonitorController::class, 'index'])
         ->name('api-monitor.index')
