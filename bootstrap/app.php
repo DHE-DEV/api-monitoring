@@ -1,8 +1,12 @@
 <?php
+// bootstrap/app.php - Mit Rate Limiter für Laravel 12
 
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -10,6 +14,16 @@ return Application::configure(basePath: dirname(__DIR__))
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
+        then: function () {
+            // Rate Limiter definieren
+            RateLimiter::for('api', function (Request $request) {
+                return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+            });
+
+            RateLimiter::for('web', function (Request $request) {
+                return Limit::perMinute(1000)->by($request->ip());
+            });
+        }
     )
     ->withMiddleware(function (Middleware $middleware) {
         // Sanctum Middleware für API
@@ -23,14 +37,6 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
         ]);
-
-        // API Middleware Group
-        $middleware->group('api', [
-            'throttle:api',
-            \Illuminate\Routing\Middleware\SubstituteBindings::class,
-        ]);
-
-        // Inertia-Zeile entfernt - wir verwenden Alpine.js + Blade
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
